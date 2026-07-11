@@ -34,7 +34,8 @@ a {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -653,7 +654,8 @@ textarea {
 
 .field input,
 .search-input,
-.field textarea {
+.field textarea,
+.field select {
   width: 100%;
   border-radius: 9px;
   border: 1px solid rgba(130, 137, 179, 0.3);

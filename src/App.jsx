@@ -363,11 +363,12 @@ function AccountsAddPage() {
       <FormCard
         title="Add Accounts"
         fields={fields}
-        actions={["Hide", editing ? "Update" : "Create"]}
+        actions={["Cancel", editing ? "Update" : "Create"]}
         submitLabel={editing ? "Update" : "Create"}
         onSubmit={handleSubmit}
         onCancel={() => navigate("/accounts")}
         loading={loading}
+        cancelLabel="Cancel"
       />
     </>
   );
@@ -454,12 +455,19 @@ function TaskTypesAddPage() {
         fields={[
           { label: "Title *", name: "title", value: editing?.title || "" },
           { label: "Task URL *", name: "taskUrl", value: editing?.taskUrl || "" },
-          { label: "Status", name: "status", value: editing?.status || "Active" },
+          {
+            label: "Status",
+            name: "status",
+            value: editing?.status || "Active",
+            type: "select",
+            options: ["Active", "Inactive"],
+          },
         ]}
-        actions={["Hide", editing ? "Update" : "Create"]}
+        actions={["Cancel", editing ? "Update" : "Create"]}
         submitLabel={editing ? "Update" : "Create"}
         onSubmit={handleSubmit}
         onCancel={() => navigate("/tasktypes")}
+        cancelLabel="Cancel"
       />
     </>
   );
@@ -535,11 +543,12 @@ function TaskGroupPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const payload = {
-      ...formValues,
-      minReward: Number(formValues.minReward) || 0,
-      interval: Number(formValues.interval) || 0,
-    };
+      const payload = {
+        ...formValues,
+        title: formValues.url1Name || formValues.url1 || "",
+        minReward: Number(formValues.minReward) || 0,
+        interval: Number(formValues.interval) || 0,
+      };
 
     if (editing?._id) {
       await api.update("taskgroups", editing._id, payload);
@@ -692,7 +701,7 @@ function TaskGroupPage() {
           </div>
           <div className="form-actions">
             <button type="button" className="ghost-button" onClick={() => setEditing(null)}>
-              Hide
+              Cancel
             </button>
             <button type="submit" className="primary-button small">
               {editing ? "Update" : "Create"}
@@ -700,20 +709,6 @@ function TaskGroupPage() {
           </div>
         </form>
       </section>
-      <div className="panel-gap" />
-      <TableCard
-        title="TaskGroup"
-        searchPlaceholder="Search..."
-        searchValue={search}
-        onSearchChange={setSearch}
-        columns={["S.NO", "URL 1", "DETAIL", "STATUS", "ACTIONS"]}
-        rows={rows}
-        pagination={`1-${rows.length} of ${rows.length}`}
-        statusColumn="STATUS"
-        actionColumn="ACTIONS"
-        loading={loading}
-        onAction={handleAction}
-      />
     </>
   );
 }
@@ -731,7 +726,7 @@ function HitsPage() {
   }, [location, navigate]);
 
   const rows = items.map((hit, index) => [
-    "",
+    { type: "checkbox", checked: false },
     String(index + 1),
     hit.workerName,
     hit.task,
@@ -788,7 +783,7 @@ function UsersListPage() {
   const navigate = useNavigate();
 
   const rows = items.map((user, index) => [
-    "",
+    { type: "checkbox", checked: index === 0 },
     user.name,
     user.email,
     user.mobileNumber || "-",
@@ -867,12 +862,13 @@ function UsersAddPage() {
           { label: "Email", name: "email", value: editing?.email || "testcompany@gmail.com" },
           { label: "Password", name: "password", value: "", type: "password" },
           { label: "Mobile Number", name: "mobileNumber", value: editing?.mobileNumber || "" },
-          { label: "Address", name: "address", value: editing?.address || "", tall: true },
+          { label: "Address", name: "address", value: editing?.address || "", tall: true, type: "textarea" },
         ]}
-        actions={["Hide", editing ? "Update" : "Create"]}
+        actions={["Cancel", editing ? "Update" : "Create"]}
         submitLabel={editing ? "Update" : "Create"}
         onSubmit={handleSubmit}
         onCancel={() => navigate("/users/list")}
+        cancelLabel="Cancel"
       />
     </>
   );

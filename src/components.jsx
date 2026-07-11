@@ -213,6 +213,7 @@ export function FormCard({
   onCancel,
   submitLabel,
   loading = false,
+  cancelLabel = "Cancel",
 }) {
   const [values, setValues] = useState({});
 
@@ -239,17 +240,46 @@ export function FormCard({
           {fields.map((field) => (
             <label key={field.label} className={field.tall ? "field tall" : "field"}>
               <span>{field.label}</span>
-              <input
-                type={field.type || "text"}
-                placeholder={field.placeholder || ""}
-                value={values[field.name] ?? ""}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    [field.name]: event.target.value,
-                  }))
-                }
-              />
+              {field.type === "select" ? (
+                <select
+                  value={values[field.name] ?? ""}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.name]: event.target.value,
+                    }))
+                  }
+                >
+                  {(field.options || []).map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              ) : field.type === "textarea" ? (
+                <textarea
+                  placeholder={field.placeholder || ""}
+                  value={values[field.name] ?? ""}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.name]: event.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <input
+                  type={field.type || "text"}
+                  placeholder={field.placeholder || ""}
+                  value={values[field.name] ?? ""}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.name]: event.target.value,
+                    }))
+                  }
+                />
+              )}
             </label>
           ))}
         </div>
@@ -264,7 +294,7 @@ export function FormCard({
                 className={index === actions.length - 1 ? "primary-button small" : "ghost-button"}
                 disabled={loading}
               >
-                {loading && isSubmit ? "Saving..." : action}
+                {loading && isSubmit ? "Saving..." : isSubmit ? action : cancelLabel}
               </button>
             );
           })}
@@ -363,6 +393,14 @@ export function TableCard({
                       return (
                         <td key={`${cell.id}-${index}`}>
                           <HitActions actionId={cell.id} status={cell.status} onAction={onAction} />
+                        </td>
+                      );
+                    }
+
+                    if (cell?.type === "checkbox") {
+                      return (
+                        <td key={`${title}-checkbox-${rowIndex}-${index}`}>
+                          <input type="checkbox" checked={cell.checked} readOnly />
                         </td>
                       );
                     }
