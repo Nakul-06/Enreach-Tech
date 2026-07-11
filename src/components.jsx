@@ -314,6 +314,23 @@ function ActionIcons({ actionId, onAction }) {
   );
 }
 
+function TaskGroupActions({ actionId, hidden, onAction }) {
+  return (
+    <div className="action-icons">
+      <button type="button" className="icon-button edit" onClick={() => onAction?.("edit", actionId)}>✎</button>
+      <button type="button" className="icon-button trash" onClick={() => onAction?.("delete", actionId)}>🗑</button>
+      <button
+        type="button"
+        className={`icon-button eye ${hidden ? "is-hidden" : ""}`}
+        onClick={() => onAction?.("toggle-hide", actionId)}
+        title={hidden ? "Show" : "Hide"}
+      >
+        {hidden ? "◌" : "◔"}
+      </button>
+    </div>
+  );
+}
+
 function HitActions({ actionId, status, onAction }) {
   return (
     <div className="hit-actions">
@@ -385,6 +402,14 @@ export function TableCard({
                       return (
                         <td key={`${cell.id}-${index}`}>
                           <ActionIcons actionId={cell.id} onAction={onAction} />
+                        </td>
+                      );
+                    }
+
+                    if (actionIndex === index && cell?.type === "taskgroup-actions") {
+                      return (
+                        <td key={`${cell.id}-${index}`}>
+                          <TaskGroupActions actionId={cell.id} hidden={cell.hidden} onAction={onAction} />
                         </td>
                       );
                     }

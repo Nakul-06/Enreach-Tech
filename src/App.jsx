@@ -538,7 +538,7 @@ function TaskGroupPage() {
     taskGroup.url1 || taskGroup.title || "-",
     taskGroup.url1Name || "-",
     taskGroup.status === false ? "Off" : "On",
-    { type: "actions", id: taskGroup._id },
+    { type: "taskgroup-actions", id: taskGroup._id, hidden: taskGroup.status === false },
   ]);
 
   const handleSubmit = async (event) => {
@@ -567,7 +567,7 @@ function TaskGroupPage() {
       return;
     }
 
-    if (action === "view") {
+    if (action === "toggle-hide") {
       await api.update("taskgroups", id, {
         ...current,
         status: current.status === false,

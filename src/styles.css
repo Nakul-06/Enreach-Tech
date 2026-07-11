@@ -757,6 +757,10 @@ th {
   font-size: 16px;
 }
 
+.icon-button.is-hidden {
+  opacity: 0.55;
+}
+
 .icon.eye {
   color: #7f9bf2;
 }
