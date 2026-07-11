@@ -14,6 +14,15 @@ import {
   TableCard,
 } from "./components";
 
+const SKIP_AUTH = import.meta.env.VITE_SKIP_AUTH === "true";
+const DEMO_USER = {
+  id: "demo-admin",
+  name: "Admin A",
+  email: "admin@sphinx.com",
+  role: "admin",
+  status: "Active",
+};
+
 const navItems = [
   { label: "Home", path: "/home" },
   { label: "Dashboard", path: "/dashboard-status" },
@@ -137,6 +146,12 @@ function LoginPage({ onLogin }) {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (values) => {
+    if (SKIP_AUTH) {
+      localStorage.setItem("sphinx-token", "demo-token");
+      onLogin({ ...DEMO_USER, email: values.email || DEMO_USER.email });
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -769,6 +784,12 @@ export default function App() {
   useEffect(() => {
     const token = localStorage.getItem("sphinx-token");
     if (!token) {
+      setChecking(false);
+      return;
+    }
+
+    if (SKIP_AUTH) {
+      setUser(DEMO_USER);
       setChecking(false);
       return;
     }
