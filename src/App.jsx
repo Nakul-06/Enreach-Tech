@@ -257,7 +257,19 @@ function AccountsListPage() {
       return;
     }
 
-    if (action === "view" || action === "edit") {
+    if (action === "view") {
+      const nextStatus = String(current.status || "").toLowerCase() === "inactive" ? "live" : "inactive";
+      await api.update("accounts", id, {
+        ...current,
+        status: nextStatus,
+        statusLabel: nextStatus === "inactive" ? "inactive" : current.statusLabel || "0m-live",
+      });
+      setMessage(nextStatus === "inactive" ? "Account hidden" : "Account shown");
+      refresh();
+      return;
+    }
+
+    if (action === "edit") {
       navigate("/accounts/add", { state: { account: current } });
       return;
     }
@@ -388,7 +400,18 @@ function TaskTypesListPage() {
 
   const handleAction = async (action, id) => {
     const current = items.find((item) => item._id === id);
-    if (action === "view" || action === "edit") {
+    if (!current) {
+      return;
+    }
+
+    if (action === "view") {
+      const nextStatus = current.status === "Inactive" ? "Active" : "Inactive";
+      await api.update("tasktypes", id, { ...current, status: nextStatus });
+      refresh();
+      return;
+    }
+
+    if (action === "edit") {
       navigate("/tasktypes/add", { state: { taskType: current } });
       return;
     }
@@ -793,7 +816,18 @@ function UsersListPage() {
 
   const handleAction = async (action, id) => {
     const current = items.find((item) => (item._id || item.id) === id);
-    if (action === "view" || action === "edit") {
+    if (!current) {
+      return;
+    }
+
+    if (action === "view") {
+      const nextStatus = current.status === "Inactive" ? "Active" : "Inactive";
+      await api.update("users", id, { ...current, status: nextStatus });
+      refresh();
+      return;
+    }
+
+    if (action === "edit") {
       navigate("/users/add", { state: { user: current } });
       return;
     }
