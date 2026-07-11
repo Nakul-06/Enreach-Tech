@@ -497,7 +497,8 @@ function TaskTypesAddPage() {
 }
 
 function TaskGroupPage() {
-  const { items, loading, error, search, setSearch, refresh } = useCollection("taskgroups");
+  const { items, error, refresh } = useCollection("taskgroups");
+  const { items: taskTypes } = useCollection("tasktypes");
   const [editing, setEditing] = useState(null);
   const [message, setMessage] = useState("");
   const [formValues, setFormValues] = useState({
@@ -518,7 +519,9 @@ function TaskGroupPage() {
   });
 
   useEffect(() => {
-    if (!editing) {
+    const firstTaskGroup = items[0];
+
+    if (!editing && !firstTaskGroup) {
       setFormValues({
         title: "",
         status: true,
@@ -538,23 +541,24 @@ function TaskGroupPage() {
       return;
     }
 
+    const source = editing || firstTaskGroup;
     setFormValues({
-      title: editing.title || "",
-      status: editing.status !== false,
-      url1: editing.url1 || "",
-      url1Name: editing.url1Name || "",
-      url2: editing.url2 || "",
-      url2Name: editing.url2Name || "",
-      url3: editing.url3 || "",
-      url3Name: editing.url3Name || "",
-      url4: editing.url4 || "",
-      url4Name: editing.url4Name || "",
-      minReward: editing.minReward ?? "0.2",
-      interval: editing.interval ?? "1000",
-      bannedRequesters: editing.bannedRequesters || "",
-      description: editing.description || "",
+      title: source.title || "",
+      status: source.status !== false,
+      url1: source.url1 || "",
+      url1Name: source.url1Name || "",
+      url2: source.url2 || "",
+      url2Name: source.url2Name || "",
+      url3: source.url3 || "",
+      url3Name: source.url3Name || "",
+      url4: source.url4 || "",
+      url4Name: source.url4Name || "",
+      minReward: source.minReward ?? "0.2",
+      interval: source.interval ?? "1000",
+      bannedRequesters: source.bannedRequesters || "",
+      description: source.description || "",
     });
-  }, [editing]);
+  }, [editing, items]);
 
   const rows = items.map((taskGroup, index) => [
     String(index + 1),
@@ -566,19 +570,21 @@ function TaskGroupPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-      const payload = {
-        ...formValues,
-        title: formValues.url1Name || formValues.url1 || "",
-        minReward: Number(formValues.minReward) || 0,
-        interval: Number(formValues.interval) || 0,
-      };
+    const payload = {
+      ...formValues,
+      title: formValues.url1Name || formValues.url1 || "",
+      minReward: Number(formValues.minReward) || 0,
+      interval: Number(formValues.interval) || 0,
+    };
 
-    if (editing?._id) {
-      await api.update("taskgroups", editing._id, payload);
+    const targetId = editing?._id || items[0]?._id;
+
+    if (targetId) {
+      await api.update("taskgroups", targetId, payload);
       setMessage("TaskGroup updated");
     } else {
       await api.create("taskgroups", payload);
-      setMessage("TaskGroup created");
+      setMessage("TaskGroup updated");
     }
     setEditing(null);
     refresh();
@@ -609,6 +615,10 @@ function TaskGroupPage() {
       refresh();
     }
   };
+
+  const taskTypeOptions = taskTypes
+    .map((taskType) => taskType.title)
+    .filter(Boolean);
 
   return (
     <>
@@ -662,8 +672,7 @@ function TaskGroupPage() {
                 </label>
                 <label className="field">
                   <span>&nbsp;</span>
-                  <input
-                    type="text"
+                  <select
                     value={formValues[rightName]}
                     disabled={!formValues.status}
                     onChange={(event) =>
@@ -672,7 +681,14 @@ function TaskGroupPage() {
                         [rightName]: event.target.value,
                       }))
                     }
-                  />
+                  >
+                    <option value="">{`Select ${label}`}</option>
+                    {taskTypeOptions.map((taskTypeTitle) => (
+                      <option key={`${rightName}-${taskTypeTitle}`} value={taskTypeTitle}>
+                        {taskTypeTitle}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
             ))}
@@ -722,12 +738,9 @@ function TaskGroupPage() {
               />
             </label>
           </div>
-          <div className="form-actions">
-            <button type="button" className="ghost-button" onClick={() => setEditing(null)}>
-              Cancel
-            </button>
+          <div className="form-actions taskgroup-update-actions">
             <button type="submit" className="primary-button small">
-              {editing ? "Update" : "Create"}
+              Update
             </button>
           </div>
         </form>
@@ -764,12 +777,19 @@ function HitsPage() {
 
     if (action === "view") {
       const target = current?.task || "";
+      if (!target) {
+        return;
+      }
       const url = /^https?:\/\//i.test(target) ? target : `https://${target}`;
       window.open(url, "_blank", "noopener,noreferrer");
       return;
     }
 
     if (action === "complete") {
+      const confirmed = window.confirm("Are you sure you want to mark this HIT as complete?");
+      if (!confirmed) {
+        return;
+      }
       await api.completeHit(id);
       refresh();
       return;

@@ -993,10 +993,15 @@ th {
 }
 
 input:disabled,
-textarea:disabled {
+textarea:disabled,
+select:disabled {
   background: #f3f2f8;
   color: #b2b5c3;
   cursor: not-allowed;
+}
+
+.taskgroup-update-actions {
+  justify-content: flex-start;
 }
 
 .message-banner {
