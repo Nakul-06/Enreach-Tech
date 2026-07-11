@@ -1,0 +1,148 @@
+Project handoff for Sphinx admin dashboard
+
+Project path
+C:\Users\naghu\OneDrive\Desktop\Sphinx Project
+
+Project summary
+`Sphinx` admin dashboard built from scratch.
+
+Stack
+- Frontend: React + Vite
+- Backend: Node.js + Express
+- Database: MongoDB + Mongoose
+- Auth: JWT
+- Styling: custom CSS, screenshot-matched layout
+
+Current goal
+Build a fully working admin dashboard based on the screenshots, while keeping the visible words in each module as close as possible to the screenshots.
+
+Important user preferences
+- do not add extra fields unless shown or asked
+- keep module wording strict
+- improve UI only inside that constraint
+- use `Hide` as the secondary form button instead of `Cancel`
+- login illustration should use the uploaded image, not the CSS doll
+
+What is already done
+- Fresh Vite React app created
+- Express backend created
+- MongoDB wired
+- JWT login added
+- Admin seed user added
+- CRUD and search wiring added for:
+  - Users
+  - Accounts
+  - TaskTypes
+  - TaskGroup
+  - All Hits
+  - Accounts Status
+  - Delete data
+  - Dashboard
+  - Home
+- Login page now uses local image asset
+- Add Accounts form trimmed back to screenshot-level fields
+- Secondary action labels changed from Cancel to Hide
+- Frontend build passes
+
+Important credentials
+Seeded admin login:
+- Email: admin@sphinx.com
+- Password: Sphinx@123
+
+MongoDB
+.env exists and is set to:
+- MONGODB_URI=mongodb://localhost:27017/sphinx-dashboard
+
+User said their connection string is:
+- mongodb://localhost:27017/
+
+It was changed to use a dedicated DB:
+- mongodb://localhost:27017/sphinx-dashboard
+
+Verified
+- MongoDB reachable
+- Backend starts successfully
+- Login API tested successfully
+- npm run build passes
+
+How to run
+From project folder:
+
+cmd.exe /c npm run dev:full
+
+This runs:
+- backend on http://127.0.0.1:5000
+- frontend on Vite local URL, usually http://localhost:5173
+
+Key files
+- Main frontend app:
+  C:\Users\naghu\OneDrive\Desktop\Sphinx Project\src\App.jsx
+- Shared UI components:
+  C:\Users\naghu\OneDrive\Desktop\Sphinx Project\src\components.jsx
+- API helper:
+  C:\Users\naghu\OneDrive\Desktop\Sphinx Project\src\api.js
+- Styles:
+  C:\Users\naghu\OneDrive\Desktop\Sphinx Project\src\styles.css
+- Backend server:
+  C:\Users\naghu\OneDrive\Desktop\Sphinx Project\backend\server.js
+- Models:
+  C:\Users\naghu\OneDrive\Desktop\Sphinx Project\backend\src\models
+- Env example:
+  C:\Users\naghu\OneDrive\Desktop\Sphinx Project\.env.example
+- Actual env:
+  C:\Users\naghu\OneDrive\Desktop\Sphinx Project\.env
+
+Backend models present
+- User
+- Account
+- TaskType
+- TaskGroup
+- Hit
+
+Known user feedback that must be respected
+- Add Accounts had too many fields earlier; user rejected that
+- user wants only the fields shown in screenshot
+- user provided login image at:
+  C:\Users\naghu\Downloads\images.jpg
+- it was copied into:
+  C:\Users\naghu\OneDrive\Desktop\Sphinx Project\src\assets\login-boy.jpg
+- user said Stop is not used; Hide is used instead
+- user wants screenshot fidelity module by module
+
+Likely next tasks
+- audit every page against screenshots and remove any remaining extra UI/data fields
+- make button behavior exactly match screenshot expectations
+- seed realistic sample records so tables are not empty
+- tighten TaskGroup, Users, TaskTypes, All Hits, Accounts Status, Dashboard to match screenshot structure even more closely
+- possibly add edit or view modal behavior if user asks
+- test all CRUD flows live through the UI, not just build/API
+
+Potential mismatch areas to review first
+- TaskGroup page was inferred because no clear screenshot existed
+- some list or action behavior may still be more functional than screenshot-exact
+- some backend fields still exist for dashboard math even if not shown in Add Accounts
+- secondary buttons were renamed to Hide, but all screens should be visually checked
+
+Installed packages
+Includes:
+- react
+- react-dom
+- react-router-dom
+- vite
+- @vitejs/plugin-react
+- express
+- mongoose
+- cors
+- dotenv
+- jsonwebtoken
+- bcryptjs
+- concurrently
+
+Useful commands
+- cmd.exe /c npm run dev:full
+- cmd.exe /c npm run server
+- cmd.exe /c npm run dev
+- cmd.exe /c npm run build
+
+What to tell the next assistant to do immediately
+Please continue from the current workspace in C:\Users\naghu\OneDrive\Desktop\Sphinx Project. Do not rebuild from scratch. First compare every screen to the screenshots and keep only the exact visible fields and wording. Preserve the current MongoDB, Express, React setup, keep Hide for secondary buttons, keep the uploaded login image, and continue making the app screenshot-accurate and fully operable.
