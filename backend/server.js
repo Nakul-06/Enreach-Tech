@@ -469,7 +469,7 @@ app.delete("/api/tasktypes/:id", auth, adminOnly, async (req, res) => {
 });
 
 app.get("/api/taskgroups", auth, async (req, res) => {
-  const query = buildSearch(req.query.search, ["title", "description"]);
+  const query = buildSearch(req.query.search, ["title", "url1", "url1Name", "url2", "url2Name", "description"]);
   const taskGroups = await repositories.taskgroups.find(query);
   res.json(taskGroups);
 });

@@ -277,7 +277,7 @@ export function FormCard({
 function ActionIcons({ actionId, onAction }) {
   return (
     <div className="action-icons">
-      <button type="button" className="icon-button eye" onClick={() => onAction?.("view", actionId)}>◉</button>
+      <button type="button" className="icon-button eye" onClick={() => onAction?.("view", actionId)}>◔</button>
       <button type="button" className="icon-button edit" onClick={() => onAction?.("edit", actionId)}>✎</button>
       <button type="button" className="icon-button trash" onClick={() => onAction?.("delete", actionId)}>🗑</button>
     </div>

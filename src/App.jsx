@@ -469,20 +469,83 @@ function TaskGroupPage() {
   const { items, loading, error, search, setSearch, refresh } = useCollection("taskgroups");
   const [editing, setEditing] = useState(null);
   const [message, setMessage] = useState("");
+  const [formValues, setFormValues] = useState({
+    title: "",
+    status: true,
+    url1: "",
+    url1Name: "",
+    url2: "",
+    url2Name: "",
+    url3: "",
+    url3Name: "",
+    url4: "",
+    url4Name: "",
+    minReward: "0.2",
+    interval: "1000",
+    bannedRequesters: "",
+    description: "",
+  });
+
+  useEffect(() => {
+    if (!editing) {
+      setFormValues({
+        title: "",
+        status: true,
+        url1: "",
+        url1Name: "",
+        url2: "",
+        url2Name: "",
+        url3: "",
+        url3Name: "",
+        url4: "",
+        url4Name: "",
+        minReward: "0.2",
+        interval: "1000",
+        bannedRequesters: "",
+        description: "",
+      });
+      return;
+    }
+
+    setFormValues({
+      title: editing.title || "",
+      status: editing.status !== false,
+      url1: editing.url1 || "",
+      url1Name: editing.url1Name || "",
+      url2: editing.url2 || "",
+      url2Name: editing.url2Name || "",
+      url3: editing.url3 || "",
+      url3Name: editing.url3Name || "",
+      url4: editing.url4 || "",
+      url4Name: editing.url4Name || "",
+      minReward: editing.minReward ?? "0.2",
+      interval: editing.interval ?? "1000",
+      bannedRequesters: editing.bannedRequesters || "",
+      description: editing.description || "",
+    });
+  }, [editing]);
 
   const rows = items.map((taskGroup, index) => [
     String(index + 1),
-    taskGroup.title,
-    taskGroup.description || "-",
+    taskGroup.url1 || taskGroup.title || "-",
+    taskGroup.url1Name || "-",
+    taskGroup.status === false ? "Off" : "On",
     { type: "actions", id: taskGroup._id },
   ]);
 
-  const handleSubmit = async (values) => {
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const payload = {
+      ...formValues,
+      minReward: Number(formValues.minReward) || 0,
+      interval: Number(formValues.interval) || 0,
+    };
+
     if (editing?._id) {
-      await api.update("taskgroups", editing._id, values);
+      await api.update("taskgroups", editing._id, payload);
       setMessage("TaskGroup updated");
     } else {
-      await api.create("taskgroups", values);
+      await api.create("taskgroups", payload);
       setMessage("TaskGroup created");
     }
     setEditing(null);
@@ -491,7 +554,21 @@ function TaskGroupPage() {
 
   const handleAction = async (action, id) => {
     const current = items.find((item) => item._id === id);
-    if (action === "view" || action === "edit") {
+    if (!current) {
+      return;
+    }
+
+    if (action === "view") {
+      await api.update("taskgroups", id, {
+        ...current,
+        status: current.status === false,
+      });
+      setMessage(current.status === false ? "TaskGroup shown" : "TaskGroup hidden");
+      refresh();
+      return;
+    }
+
+    if (action === "edit") {
       setEditing(current);
       return;
     }
@@ -506,26 +583,133 @@ function TaskGroupPage() {
       <PageHeaderSpacer />
       {error ? <MessageBanner tone="error" message={error} /> : null}
       {message ? <MessageBanner tone="success" message={message} /> : null}
-      <FormCard
-        title="TaskGroup"
-        fields={[
-          { label: "Title", name: "title", value: editing?.title || "" },
-          { label: "Description", name: "description", value: editing?.description || "", tall: true },
-        ]}
-        actions={["Hide", editing ? "Update" : "Create"]}
-        submitLabel={editing ? "Update" : "Create"}
-        onSubmit={handleSubmit}
-        onCancel={() => setEditing(null)}
-      />
+      <section className="panel form-panel">
+        <div className="panel-header">
+          <h2>TaskGroup</h2>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="taskgroup-toolbar">
+            <div className="taskgroup-status">
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={formValues.status}
+                  onChange={(event) =>
+                    setFormValues((current) => ({
+                      ...current,
+                      status: event.target.checked,
+                    }))
+                  }
+                />
+                <span className="toggle-track" />
+              </label>
+              <span>Status</span>
+            </div>
+          </div>
+          <div className="taskgroup-grid">
+            {[
+              ["URL 1", "url1", "url1Name"],
+              ["URL 2", "url2", "url2Name"],
+              ["URL 3", "url3", "url3Name"],
+              ["URL 4", "url4", "url4Name"],
+            ].map(([label, leftName, rightName]) => (
+              <div className="taskgroup-row" key={leftName}>
+                <label className="field">
+                  <span>{label}</span>
+                  <input
+                    type="text"
+                    value={formValues[leftName]}
+                    disabled={!formValues.status}
+                    onChange={(event) =>
+                      setFormValues((current) => ({
+                        ...current,
+                        [leftName]: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>&nbsp;</span>
+                  <input
+                    type="text"
+                    value={formValues[rightName]}
+                    disabled={!formValues.status}
+                    onChange={(event) =>
+                      setFormValues((current) => ({
+                        ...current,
+                        [rightName]: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
+          <div className="taskgroup-subhead">Survey Settings:</div>
+          <div className="taskgroup-grid survey-grid">
+            <label className="field">
+              <span>Min Reward:</span>
+              <input
+                type="number"
+                step="0.01"
+                value={formValues.minReward}
+                disabled={!formValues.status}
+                onChange={(event) =>
+                  setFormValues((current) => ({
+                    ...current,
+                    minReward: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Interval:</span>
+              <input
+                type="number"
+                value={formValues.interval}
+                disabled={!formValues.status}
+                onChange={(event) =>
+                  setFormValues((current) => ({
+                    ...current,
+                    interval: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="field taskgroup-textarea">
+              <span>Banned Requesters List:</span>
+              <textarea
+                value={formValues.bannedRequesters}
+                disabled={!formValues.status}
+                onChange={(event) =>
+                  setFormValues((current) => ({
+                    ...current,
+                    bannedRequesters: event.target.value,
+                  }))
+                }
+              />
+            </label>
+          </div>
+          <div className="form-actions">
+            <button type="button" className="ghost-button" onClick={() => setEditing(null)}>
+              Hide
+            </button>
+            <button type="submit" className="primary-button small">
+              {editing ? "Update" : "Create"}
+            </button>
+          </div>
+        </form>
+      </section>
       <div className="panel-gap" />
       <TableCard
         title="TaskGroup"
         searchPlaceholder="Search..."
         searchValue={search}
         onSearchChange={setSearch}
-        columns={["S.NO", "TITLE", "DESCRIPTION", "ACTIONS"]}
+        columns={["S.NO", "URL 1", "DETAIL", "STATUS", "ACTIONS"]}
         rows={rows}
         pagination={`1-${rows.length} of ${rows.length}`}
+        statusColumn="STATUS"
         actionColumn="ACTIONS"
         loading={loading}
         onAction={handleAction}
