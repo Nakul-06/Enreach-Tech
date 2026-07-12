@@ -248,6 +248,44 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function getNestedNumber(source, paths, fallback = 0) {
+  for (const path of paths) {
+    const value = path.split(".").reduce((current, key) => current?.[key], source);
+    const number = Number(value);
+
+    if (Number.isFinite(number)) {
+      return number;
+    }
+  }
+
+  return fallback;
+}
+
+async function findAccountByWorkerId(workerId) {
+  if (!workerId?.trim()) {
+    return null;
+  }
+
+  return repositories.accounts.findOne({ workerId: workerId.trim() });
+}
+
+async function updateWorkerActivity(workerId, updates = {}) {
+  const account = await findAccountByWorkerId(workerId);
+
+  if (!account) {
+    return null;
+  }
+
+  return repositories.accounts.updateById(account._id, {
+    ...account,
+    ...updates,
+    workerId: account.workerId,
+    status: updates.status || account.status || "live",
+    statusLabel: updates.statusLabel || "0m-live",
+    activityDate: updates.activityDate || new Date(),
+  });
+}
+
 function accountToDashboardRow(account, index) {
   const submitted = account.submitted ?? 0;
   const approved = account.approved ?? 0;
@@ -397,6 +435,107 @@ app.get("/api/dashboard", auth, async (req, res) => {
     summaryCards: summaryFromAccounts(accounts, hits),
   });
 });
+
+app.post("/api/check-worker", async (req, res) => {
+  const workerId = req.body.workerId?.trim();
+
+  if (!workerId) {
+    return res.status(400).json({ message: "workerId is required" });
+  }
+
+  const account = await updateWorkerActivity(workerId);
+
+  if (!account) {
+    return res.status(404).json({ message: "Worker not found" });
+  }
+
+  res.json({
+    ok: true,
+    workerId: account.workerId,
+    status: account.status,
+    statusLabel: account.statusLabel,
+    activityDate: account.activityDate,
+  });
+});
+
+app.post("/api/worker-dashboard-detail", async (req, res) => {
+  const workerId = req.body.workerId?.trim();
+
+  if (!workerId) {
+    return res.status(400).json({ message: "workerId is required" });
+  }
+
+  const dailyStats = req.body.daily_hit_statistics_overview?.[0] || req.body.dailyStats || {};
+  const hitsOverview = req.body.hits_overview || {};
+  const reward = getNestedNumber(req.body, [
+    "available_earnings.amount_in_dollars",
+    "earnings",
+    "reward",
+  ]);
+
+  const account = await updateWorkerActivity(workerId, {
+    submitted: getNestedNumber(dailyStats, ["submitted", "assignments_submitted"], 0),
+    approved: getNestedNumber(dailyStats, ["approved", "assignments_approved"], 0),
+    rejected: getNestedNumber(dailyStats, ["rejected", "assignments_rejected"], 0),
+    pending: getNestedNumber(dailyStats, ["pending", "assignments_pending"], getNestedNumber(hitsOverview, ["pending"], 0)),
+    reward,
+    earnings: reward,
+    totalEarnings: reward,
+  });
+
+  if (!account) {
+    return res.status(404).json({ message: "Worker not found" });
+  }
+
+  res.json({ ok: true, workerId: account.workerId });
+});
+
+app.get("/api/manual-task-links", async (req, res) => {
+  const workerId = req.query.workerId?.trim();
+
+  if (workerId) {
+    const account = await findAccountByWorkerId(workerId);
+    if (!account) {
+      return res.status(404).json({ message: "Worker not found" });
+    }
+  }
+
+  const taskGroups = (await repositories.taskgroups.find({})).filter((item) => item.status !== false);
+  const links = taskGroups.flatMap((taskGroup) =>
+    [
+      [taskGroup.url1, taskGroup.url1Name],
+      [taskGroup.url2, taskGroup.url2Name],
+      [taskGroup.url3, taskGroup.url3Name],
+      [taskGroup.url4, taskGroup.url4Name],
+    ]
+      .filter(([url]) => Boolean(url))
+      .map(([url, title]) => ({
+        title: title || taskGroup.title || "Task",
+        url,
+        reward: taskGroup.minReward ?? 0,
+        interval: taskGroup.interval ?? 0,
+      }))
+  );
+
+  res.json({ ok: true, workerId: workerId || null, links });
+});
+
+app.get(
+  [
+    "/api/auto-login",
+    "/api/auto-fill",
+    "/api/mturk-script",
+    "/api/hit-fetch",
+    "/api/puzzle-detection",
+    "/api/tab-manager",
+  ],
+  (_req, res) => {
+    res
+      .status(403)
+      .type("text/plain")
+      .send("This deployment does not serve automation scripts. Use /api/manual-task-links for manual task links.");
+  }
+);
 
 app.get("/api/accounts", auth, async (req, res) => {
   const query = buildSearch(req.query.search, ["workerId", "workerName", "email", "status"]);
