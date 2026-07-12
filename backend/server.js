@@ -286,6 +286,173 @@ async function updateWorkerActivity(workerId, updates = {}) {
   });
 }
 
+function getApiBaseUrl(req) {
+  return process.env.PUBLIC_API_BASE_URL || `${req.protocol}://${req.get("host")}/api`;
+}
+
+function getWorkerIdQuery(req) {
+  return String(req.query.workerId || "CHANGE_ME").trim();
+}
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function manualTaskLinksUserScript(apiBaseUrl, workerId) {
+  return `// ==UserScript==
+// @name         Sphinx Manual Task Links
+// @namespace    https://www.mayohn.co.in/
+// @version      1.0
+// @description  Shows dashboard task links for manual opening only.
+// @match        https://worker.mturk.com/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+  "use strict";
+
+  const WORKER_ID = ${JSON.stringify(workerId)};
+  const API_BASE = ${JSON.stringify(apiBaseUrl)};
+
+  function createPanel() {
+    const panel = document.createElement("div");
+    panel.id = "sphinx-manual-task-links";
+    panel.style.cssText = [
+      "position:fixed",
+      "right:16px",
+      "bottom:16px",
+      "z-index:999999",
+      "width:280px",
+      "max-height:360px",
+      "overflow:auto",
+      "background:#ffffff",
+      "border:1px solid #d8dbe8",
+      "box-shadow:0 12px 32px rgba(20,24,40,.18)",
+      "border-radius:10px",
+      "font:14px Arial,sans-serif",
+      "color:#39405f"
+    ].join(";");
+
+    panel.innerHTML = '<div style="padding:12px 14px;border-bottom:1px solid #eceef6;font-weight:700">Sphinx Task Links</div><div data-body style="padding:10px 14px">Loading...</div>';
+    document.body.appendChild(panel);
+    return panel;
+  }
+
+  function renderLinks(panel, links) {
+    const body = panel.querySelector("[data-body]");
+    if (!links.length) {
+      body.textContent = "No active task links.";
+      return;
+    }
+
+    body.innerHTML = "";
+    links.forEach((link) => {
+      const item = document.createElement("a");
+      item.href = link.url;
+      item.target = "_blank";
+      item.rel = "noopener noreferrer";
+      item.textContent = link.title || link.url;
+      item.style.cssText = "display:block;margin:0 0 8px;color:#4f65d8;text-decoration:underline";
+      body.appendChild(item);
+    });
+  }
+
+  async function loadLinks() {
+    const panel = document.getElementById("sphinx-manual-task-links") || createPanel();
+    const url = API_BASE + "/manual-task-links?workerId=" + encodeURIComponent(WORKER_ID);
+
+    try {
+      const response = await fetch(url, { credentials: "omit" });
+      const data = await response.json();
+      renderLinks(panel, data.links || []);
+    } catch (error) {
+      const body = panel.querySelector("[data-body]");
+      body.textContent = "Unable to load links.";
+      console.error("Sphinx manual links failed", error);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadLinks);
+  } else {
+    loadLinks();
+  }
+})();
+`;
+}
+
+function workerReporterUserScript(apiBaseUrl, workerId) {
+  return `// ==UserScript==
+// @name         Sphinx Worker Status Reporter
+// @namespace    https://www.mayohn.co.in/
+// @version      1.0
+// @description  Reports worker live status and dashboard summary to Sphinx.
+// @match        https://worker.mturk.com/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+  "use strict";
+
+  const WORKER_ID = ${JSON.stringify(workerId)};
+  const API_BASE = ${JSON.stringify(apiBaseUrl)};
+  const PING_INTERVAL_MS = 30000;
+  const DASHBOARD_INTERVAL_MS = 30 * 60 * 1000;
+
+  async function postJson(path, payload) {
+    const response = await fetch(API_BASE + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      credentials: "omit"
+    });
+
+    if (!response.ok) {
+      throw new Error("Request failed: " + response.status);
+    }
+
+    return response.json();
+  }
+
+  function sendPing() {
+    postJson("/check-worker", { workerId: WORKER_ID }).catch((error) => {
+      console.error("Sphinx ping failed", error);
+    });
+  }
+
+  async function sendDashboardSummary() {
+    try {
+      const response = await fetch("https://worker.mturk.com/dashboard.json?ref=w_hdr_db", {
+        credentials: "include"
+      });
+      const data = await response.json();
+
+      await postJson("/worker-dashboard-detail", {
+        workerId: WORKER_ID,
+        available_earnings: {
+          amount_in_dollars: data.available_earnings?.amount_in_dollars ?? 0
+        },
+        hits_overview: data.hits_overview ?? {},
+        daily_hit_statistics_overview: [data.daily_hit_statistics_overview?.[0] ?? {}]
+      });
+    } catch (error) {
+      console.error("Sphinx dashboard report failed", error);
+    }
+  }
+
+  sendPing();
+  sendDashboardSummary();
+  setInterval(sendPing, PING_INTERVAL_MS);
+  setInterval(sendDashboardSummary, DASHBOARD_INTERVAL_MS);
+})();
+`;
+}
+
 function accountToDashboardRow(account, index) {
   const submitted = account.submitted ?? 0;
   const approved = account.approved ?? 0;
@@ -381,6 +548,50 @@ async function seedAdmin() {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, mode: useMemoryDb ? "memory" : "mongodb" });
+});
+
+app.get("/api/userscripts", (req, res) => {
+  const apiBaseUrl = getApiBaseUrl(req);
+  const workerId = getWorkerIdQuery(req);
+  const safeWorkerId = escapeHtml(workerId);
+  const manualLinksUrl = `${apiBaseUrl}/userscripts/manual-task-links.user.js?workerId=${encodeURIComponent(workerId)}`;
+  const reporterUrl = `${apiBaseUrl}/userscripts/worker-reporter.user.js?workerId=${encodeURIComponent(workerId)}`;
+
+  res.type("html").send(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Sphinx Userscripts</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 32px; color: #39405f; }
+      a { color: #4f65d8; }
+      code { background: #f4f5fb; padding: 2px 5px; border-radius: 4px; }
+      .card { border: 1px solid #dfe2f0; border-radius: 8px; padding: 18px; margin-bottom: 14px; max-width: 720px; }
+    </style>
+  </head>
+  <body>
+    <h1>Sphinx Userscripts</h1>
+    <p>Worker ID: <code>${safeWorkerId}</code></p>
+    <div class="card">
+      <h2>Manual Task Links</h2>
+      <p>Shows active dashboard task links so they can be opened manually.</p>
+      <a href="${manualLinksUrl}">Install manual task links script</a>
+    </div>
+    <div class="card">
+      <h2>Worker Status Reporter</h2>
+      <p>Reports live status and dashboard summary numbers to Sphinx.</p>
+      <a href="${reporterUrl}">Install worker status reporter script</a>
+    </div>
+  </body>
+</html>`);
+});
+
+app.get("/api/userscripts/manual-task-links.user.js", (req, res) => {
+  res.type("application/javascript").send(manualTaskLinksUserScript(getApiBaseUrl(req), getWorkerIdQuery(req)));
+});
+
+app.get("/api/userscripts/worker-reporter.user.js", (req, res) => {
+  res.type("application/javascript").send(workerReporterUserScript(getApiBaseUrl(req), getWorkerIdQuery(req)));
 });
 
 app.post("/api/auth/login", async (req, res) => {
@@ -519,23 +730,6 @@ app.get("/api/manual-task-links", async (req, res) => {
 
   res.json({ ok: true, workerId: workerId || null, links });
 });
-
-app.get(
-  [
-    "/api/auto-login",
-    "/api/auto-fill",
-    "/api/mturk-script",
-    "/api/hit-fetch",
-    "/api/puzzle-detection",
-    "/api/tab-manager",
-  ],
-  (_req, res) => {
-    res
-      .status(403)
-      .type("text/plain")
-      .send("This deployment does not serve automation scripts. Use /api/manual-task-links for manual task links.");
-  }
-);
 
 app.get("/api/accounts", auth, async (req, res) => {
   const query = buildSearch(req.query.search, ["workerId", "workerName", "email", "status"]);
